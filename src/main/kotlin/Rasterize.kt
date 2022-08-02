@@ -2,11 +2,15 @@
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.UsageError
+import com.github.ajalt.clikt.core.context
+import com.github.ajalt.clikt.output.CliktHelpFormatter
 import com.github.ajalt.clikt.parameters.arguments.ArgumentDelegate
 import com.github.ajalt.clikt.parameters.arguments.ProcessedArgument
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.transformAll
 import com.github.ajalt.clikt.parameters.arguments.validate
+import com.github.ajalt.clikt.parameters.groups.OptionGroup
+import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
@@ -32,16 +36,15 @@ class Rasterize : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) 
     private val destination by option(
         "-d",
         "--destination",
-        help = "Specifies the location of the generated WebP files (must be a directory)",
-        metavar = "DEST_DIR"
+        help = "Set the location of the generated WebP files\u0085(must be a directory)",
+        metavar = "DEST"
     ).file(canBeFile = false)
 
-    private val ldpi by densityOption(Density.LOW, "low", defaultValue = false)
-    private val mdpi by densityOption(Density.MEDIUM, "medium", defaultValue = true)
-    private val hdpi by densityOption(Density.HIGH, "high", defaultValue = true)
-    private val xhdpi by densityOption(Density.EXTRA_HIGH, "extra-high", defaultValue = true)
-    private val xxhdpi by densityOption(Density.EXTRA_EXTRA_HIGH, "extra-extra-high", defaultValue = true)
-    private val xxxhdpi by densityOption(Density.EXTRA_EXTRA_EXTRA_HIGH, "extra-extra-extra-high", defaultValue = true)
+    private val densityOptions by DensityOptions()
+
+    init {
+        context { helpFormatter = CliktHelpFormatter(colSpacing = 3, showDefaultValues = true) }
+    }
 
     override fun run() {
         val densities = readDensityFlags().also {
@@ -64,27 +67,16 @@ class Rasterize : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) 
         }
     }
 
-    private fun densityOption(
-        density: Density,
-        prefix: String,
-        defaultValue: Boolean
-    ) = option(
-        "--$density",
-        help = "Specifies whether a version for $prefix-density screens should be generated"
-    ).flag(
-        "--no-$density",
-        default = defaultValue,
-        defaultForHelp = if (defaultValue) "yes" else "no"
-    )
-
     private fun readDensityFlags(): EnumSet<Density> =
         EnumSet.noneOf(Density::class.java).apply {
-            if (ldpi) add(Density.LOW)
-            if (mdpi) add(Density.MEDIUM)
-            if (hdpi) add(Density.HIGH)
-            if (xhdpi) add(Density.EXTRA_HIGH)
-            if (xxhdpi) add(Density.EXTRA_EXTRA_HIGH)
-            if (xxxhdpi) add(Density.EXTRA_EXTRA_EXTRA_HIGH)
+            with(densityOptions) {
+                if (ldpi) add(Density.LOW)
+                if (mdpi) add(Density.MEDIUM)
+                if (hdpi) add(Density.HIGH)
+                if (xhdpi) add(Density.EXTRA_HIGH)
+                if (xxhdpi) add(Density.EXTRA_EXTRA_HIGH)
+                if (xxxhdpi) add(Density.EXTRA_EXTRA_EXTRA_HIGH)
+            }
         }
 
     private fun transcode(sourceFile: File, densities: EnumSet<Density>) {
@@ -103,6 +95,30 @@ class Rasterize : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) 
                 fileName = sourceFile.nameWithoutExtension
             )
         )
+    }
+
+    private class DensityOptions : OptionGroup(
+        name = "Density options",
+        help = "Enable/disable generation of a version for a specific pixel density"
+    ) {
+
+        val ldpi by densityOption(Density.LOW, "low", defaultValue = false)
+        val mdpi by densityOption(Density.MEDIUM, "medium", defaultValue = true)
+        val hdpi by densityOption(Density.HIGH, "high", defaultValue = true)
+        val xhdpi by densityOption(Density.EXTRA_HIGH, "extra-high", defaultValue = true)
+        val xxhdpi by densityOption(Density.EXTRA_EXTRA_HIGH, "extra-extra-high", defaultValue = true)
+        val xxxhdpi by densityOption(Density.EXTRA_EXTRA_EXTRA_HIGH, "extra-extra-extra-high", defaultValue = true)
+
+        private fun densityOption(
+            density: Density,
+            help: String,
+            defaultValue: Boolean
+        ) = option("--$density", help = help)
+            .flag(
+                "--no-$density",
+                default = defaultValue,
+                defaultForHelp = if (defaultValue) "enabled" else "disabled"
+            )
     }
 }
 
