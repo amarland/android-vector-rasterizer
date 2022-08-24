@@ -1,3 +1,5 @@
+package com.amarland.androidvectorrasterizer
+
 import java.io.File
 
 open class PreRasterizationException(message: String) : Exception(message)

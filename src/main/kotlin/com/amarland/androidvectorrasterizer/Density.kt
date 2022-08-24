@@ -1,3 +1,5 @@
+package com.amarland.androidvectorrasterizer
+
 enum class Density(private val qualifier: String) {
 
     LOW("ldpi"),

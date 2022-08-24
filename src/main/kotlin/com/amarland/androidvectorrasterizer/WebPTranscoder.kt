@@ -1,3 +1,5 @@
+package com.amarland.androidvectorrasterizer
+
 import com.luciad.imageio.webp.WebPWriteParam
 import org.apache.batik.transcoder.TranscoderException
 import org.apache.batik.transcoder.TranscoderOutput
@@ -8,7 +10,6 @@ import java.io.IOException
 import java.util.EnumSet
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
-import javax.imageio.ImageWriteParam
 import javax.imageio.stream.FileImageOutputStream
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -19,7 +20,8 @@ private const val FILE_EXTENSION_WEBP = "webp"
 class WebPTranscoder(
     private val densities: EnumSet<Density>,
     widthDp: Float? = null,
-    heightDp: Float? = null
+    heightDp: Float? = null,
+    forceTransparentWhite: Boolean = false
 ) : ImageTranscoder() {
 
     private val initialScaleFactor: Float
@@ -29,6 +31,8 @@ class WebPTranscoder(
 
         if (widthDp != null) hints[KEY_WIDTH] = widthDp
         if (heightDp != null) hints[KEY_HEIGHT] = heightDp
+
+        hints[KEY_FORCE_TRANSPARENT_WHITE] = forceTransparentWhite
     }
 
     override fun setImageSize(docWidth: Float, docHeight: Float) {
@@ -43,7 +47,7 @@ class WebPTranscoder(
     @Suppress("InconsistentCommentForJavaParameter")
     override fun writeImage(image: BufferedImage, transcoderOutput: TranscoderOutput) {
         val (rootOutputDirectory, outputFileName) = transcoderOutput as? Output
-            ?: throw IllegalArgumentException("`transcoderOutput` is of the wrong type")
+            ?: throw IllegalArgumentException("`transcoderOutput` is of the wrong type.")
 
         val imageWriter = ImageIO.getImageWritersByMIMEType(MIME_TYPE_WEBP)
             .takeIf { it.hasNext() }
@@ -79,10 +83,7 @@ class WebPTranscoder(
                     write(
                         /* metadata = */ null,
                         IIOImage(imageToWrite, /* thumbnails = */ null, /* metadata = */ null),
-                        WebPWriteParam(locale).apply {
-                            compressionMode = ImageWriteParam.MODE_EXPLICIT
-                            compressionType = compressionTypes[WebPWriteParam.LOSSLESS_COMPRESSION]
-                        }
+                        WebPWriteParam(locale)
                     )
                 } catch (ioe: IOException) {
                     densitySpecificOutputDirectory.deleteRecursively()

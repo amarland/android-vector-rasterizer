@@ -1,9 +1,11 @@
-@file:JvmName("Rasterizer")
+package com.amarland.androidvectorrasterizer
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.context
 import com.github.ajalt.clikt.output.CliktHelpFormatter
+import com.github.ajalt.clikt.output.HelpFormatter
+import com.github.ajalt.clikt.output.Localization
 import com.github.ajalt.clikt.parameters.arguments.ArgumentDelegate
 import com.github.ajalt.clikt.parameters.arguments.ProcessedArgument
 import com.github.ajalt.clikt.parameters.arguments.argument
@@ -14,6 +16,7 @@ import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
+import com.github.ajalt.clikt.parameters.types.float
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory
 import org.apache.batik.transcoder.TranscoderException
 import org.apache.batik.transcoder.TranscoderInput
@@ -27,43 +30,100 @@ import kotlin.system.exitProcess
 
 private const val FILE_EXTENSION_SVG = "svg"
 
-class Rasterize : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) {
+private val NEW_LINE = System.lineSeparator()
+private const val NEXT_LINE = '\u0085'
 
-    private val sourceFiles by argument("SOURCE")
+class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) {
+
+    private val source by argument("<source>")
         .filesOnlyWithExpandedDirectoryContents()
         .validateSource()
 
     private val destination by option(
         "-d",
         "--destination",
-        help = "Set the location of the generated WebP files\u0085(must be a directory)",
-        metavar = "DEST"
+        help = "Location of the generated WebP files$NEXT_LINE(must be a directory).",
+        metavar = "<dir>"
     ).file(canBeFile = false)
+
+    private val forceTransparentWhite by option(
+        "--force-transparent-white",
+        help = "Convert transparent black (#00000000) pixels${NEXT_LINE}to white transparent pixels (#00FFFFFF).",
+        hidden = true
+    ).flag()
 
     private val densityOptions by DensityOptions()
 
+    private val dimensionOptions by DimensionOptions()
+
     init {
-        context { helpFormatter = CliktHelpFormatter(colSpacing = 3, showDefaultValues = true) }
+        configureHelpFormatter()
     }
 
     override fun run() {
         val densities = readDensityFlags().also {
-            if (it.isEmpty()) throw UsageError("At least one density must be specified")
+            if (it.isEmpty()) throw UsageError("At least one density must be specified.")
         }
 
         try {
-            if (sourceFiles.size == 1) {
-                transcode(sourceFiles[0], densities)
+            if (source.size == 1) {
+                transcode(source[0], densities)
             } else {
-                for (sourceFile in sourceFiles) transcode(sourceFile, densities)
+                for (sourceFile in source) transcode(sourceFile, densities)
             }
-        } catch (e: Exception) {
-            if (e is PreRasterizationException || e is TranscoderException) {
-                System.err.println(
-                    (e as? TranscoderException)?.exception?.localizedMessage ?: e.localizedMessage
-                )
-                exitProcess(1)
-            } else throw e
+        } catch (e: PreRasterizationException) {
+            System.err.println(e.localizedMessage)
+            exitProcess(2)
+        } catch (e: TranscoderException) {
+            System.err.println(e.exception?.localizedMessage ?: e.localizedMessage)
+            exitProcess(3)
+        }
+    }
+
+    private fun configureHelpFormatter() {
+        context {
+            helpFormatter = object : CliktHelpFormatter(
+                localization = object : Localization {
+
+                    override fun optionsMetavar() = super.optionsMetavar().lowercase()
+                },
+                colSpacing = 4,
+                showDefaultValues = true
+            ) {
+
+                override fun formatHelp(
+                    prolog: String,
+                    epilog: String,
+                    parameters: List<HelpFormatter.ParameterHelp>,
+                    programName: String
+                ) = super.formatHelp(prolog, epilog, parameters, programName)
+                    .lineSequence()
+                    .withIndex().let { linesWithIndex ->
+                        buildString {
+                            var optionsTitleIndex = Int.MAX_VALUE
+
+                            for ((index, line) in linesWithIndex) {
+                                val isPastOptionsTitle = index > optionsTitleIndex
+                                val isHelpOptionLine = isPastOptionsTitle &&
+                                        currentContext.helpOptionNames.last() in line
+
+                                append(line)
+
+                                if (!isHelpOptionLine) appendLine()
+                                if (line == localization.optionsTitle()) optionsTitleIndex = index
+                                if (index == optionsTitleIndex ||
+                                    isPastOptionsTitle && line.isNotEmpty() && line.last() == '.' && !isHelpOptionLine
+                                ) {
+                                    appendLine()
+                                }
+                            }
+                        }
+                    }
+            }
+            localization = object : Localization {
+
+                override fun helpOptionMessage() = "${super.helpOptionMessage()}."
+            }
         }
     }
 
@@ -81,14 +141,15 @@ class Rasterize : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) 
 
     private fun transcode(sourceFile: File, densities: EnumSet<Density>) {
         val svgDocument = createSvgDocument(sourceFile.inputStream())
-            ?: throw PreRasterizationException("'${sourceFile.path}' could not be interpreted as an SVG document")
+            ?: throw PreRasterizationException("'${sourceFile.path}' could not be interpreted as an SVG document.")
 
         val outputDirectory = destination?.also { directory ->
             if (!directory.exists() && !directory.mkdirs())
                 throw DirectoryCreationException(directory)
         } ?: sourceFile.parentFile
 
-        WebPTranscoder(densities).transcode(
+        val (width, height) = dimensionOptions
+        WebPTranscoder(densities, width, height, forceTransparentWhite).transcode(
             TranscoderInput(svgDocument),
             WebPTranscoder.Output(
                 directory = outputDirectory,
@@ -99,7 +160,8 @@ class Rasterize : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) 
 
     private class DensityOptions : OptionGroup(
         name = "Density options",
-        help = "Enable/disable generation of a version for a specific pixel density"
+        help = "You can enable or disable generation of a version for a specific pixel density" +
+                " by specifying one or more of the options below."
     ) {
 
         val ldpi by densityOption(Density.LOW, "low", defaultValue = false)
@@ -119,6 +181,30 @@ class Rasterize : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) 
                 default = defaultValue,
                 defaultForHelp = if (defaultValue) "enabled" else "disabled"
             )
+    }
+
+    private class DimensionOptions : OptionGroup(
+        name = "Dimension options",
+        help = "The desired width and height (in density-independent pixels) of the generated images" +
+                " can be set via the options below.$NEXT_LINE" +
+                "If not set explicitly, the size will be determined by the 'width' and 'height' attributes of the" +
+                " 'svg' element, or by the 'viewBox' attribute if these are not set.$NEXT_LINE" +
+                "If only one of the two is set, then the other one will be computed" +
+                " with respect to the original aspect ratio."
+    ) {
+
+        val width by dimensionOption("width")
+        val height by dimensionOption("height")
+
+        operator fun component1() = width
+        operator fun component2() = height
+
+        private fun dimensionOption(name: String) =
+            option(
+                "--$name",
+                help = "${name.replaceFirstChar(Char::titlecase)} in dp.",
+                metavar = "<float>"
+            ).float()
     }
 }
 
@@ -149,14 +235,13 @@ private fun ProcessedArgument<List<File>, *>.validateSource(): ArgumentDelegate<
             val multipleOccurrences = nonSvgFiles.size > 1
             fail(
                 buildString {
-                    val lineSeparator = System.lineSeparator()
                     append("The following ")
                     append(if (multipleOccurrences) "files were" else "file was")
                     append(" not recognized as having the expected extension (.$FILE_EXTENSION_SVG):")
-                    append(lineSeparator)
+                    append(NEW_LINE)
                     append(
                         if (multipleOccurrences)
-                            nonSvgFiles.joinToString(separator = lineSeparator) { file -> file.path }
+                            nonSvgFiles.joinToString(separator = NEW_LINE) { file -> file.path }
                         else nonSvgFiles[0].path
                     )
                 }

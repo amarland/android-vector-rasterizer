@@ -23,10 +23,24 @@ tasks.test {
     useJUnitPlatform()
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = JavaVersion.VERSION_1_8.toString()
 }
 
+@Suppress("PropertyName")
+val _mainClassName = "com.amarland.androidvectorrasterizer.Main"
+
 application {
-    mainClass.set("Main")
+    mainClass.set(_mainClassName)
+}
+
+tasks.withType<Jar> {
+    manifest {
+        attributes["Main-Class"] = _mainClassName
+    }
 }
