@@ -121,7 +121,7 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
                             for ((index, line) in linesWithIndex) {
                                 val isPastOptionsTitle = index > optionsTitleIndex
                                 val isHelpOptionLine = isPastOptionsTitle &&
-                                        currentContext.helpOptionNames.last() in line
+                                    currentContext.helpOptionNames.last() in line
 
                                 append(line)
 
@@ -149,15 +149,17 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
                 if (ldpi) add(Density.LOW)
                 if (mdpi) add(Density.MEDIUM)
                 if (hdpi) add(Density.HIGH)
-                if (xhdpi) add(Density.EXTRA_HIGH)
-                if (xxhdpi) add(Density.EXTRA_EXTRA_HIGH)
-                if (xxxhdpi) add(Density.EXTRA_EXTRA_EXTRA_HIGH)
+                if (xhdpi) add(Density.X_HIGH)
+                if (xxhdpi) add(Density.XX_HIGH)
+                if (xxxhdpi) add(Density.XXX_HIGH)
             }
         }
 
     private fun transcode(sourceFile: File, densities: EnumSet<Density>) {
         val svgDocument = createSvgDocument(sourceFile.inputStream())
-            ?: throw PreRasterizationException("'${sourceFile.path}' could not be interpreted as an SVG document.")
+            ?: throw PreRasterizationException(
+                "'${sourceFile.path}' could not be interpreted as an SVG document."
+            )
 
         val outputDirectory = destination?.also { directory ->
             if (!directory.exists() && !directory.mkdirs())
@@ -177,15 +179,15 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
     private class DensityOptions : OptionGroup(
         name = "Density options",
         help = "You can enable or disable generation of a version for a specific pixel density" +
-                " by specifying one or more of the options below."
+            " by specifying one or more of the options below."
     ) {
 
-        val ldpi by densityOption(Density.LOW, "low", defaultValue = false)
-        val mdpi by densityOption(Density.MEDIUM, "medium", defaultValue = true)
-        val hdpi by densityOption(Density.HIGH, "high", defaultValue = true)
-        val xhdpi by densityOption(Density.EXTRA_HIGH, "extra-high", defaultValue = true)
-        val xxhdpi by densityOption(Density.EXTRA_EXTRA_HIGH, "extra-extra-high", defaultValue = true)
-        val xxxhdpi by densityOption(Density.EXTRA_EXTRA_EXTRA_HIGH, "extra-extra-extra-high", defaultValue = true)
+        val ldpi by densityOption(Density.LOW, "ldpi", defaultValue = false)
+        val mdpi by densityOption(Density.MEDIUM, "mdpi", defaultValue = true)
+        val hdpi by densityOption(Density.HIGH, "hdpi", defaultValue = true)
+        val xhdpi by densityOption(Density.X_HIGH, "xhdpi", defaultValue = true)
+        val xxhdpi by densityOption(Density.XX_HIGH, "xxhdpi", defaultValue = true)
+        val xxxhdpi by densityOption(Density.XXX_HIGH, "xxxhdpi", defaultValue = true)
 
         private fun densityOption(
             density: Density,
@@ -201,12 +203,17 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
 
     private class DimensionOptions : OptionGroup(
         name = "Dimension options",
-        help = "The desired width and height (in density-independent pixels) of the generated images" +
-                " can be set via the options below.$NEXT_LINE" +
-                "If not set explicitly, the size will be determined by the 'width' and 'height' attributes of the" +
-                " 'svg' element, or by the 'viewBox' attribute if these are not set.$NEXT_LINE" +
-                "If only one of the two is set, then the other one will be computed" +
-                " with respect to the original aspect ratio."
+        help = buildString {
+            append("The desired width and height (in density-independent pixels) of the generated ")
+            append("images can be set via the options below.")
+            append(NEXT_LINE)
+            append("If not set explicitly, the size will be determined by the 'width' and 'height'")
+            append(" attributes of the 'svg' element, or by the 'viewBox' attribute if these are")
+            append(" not set.")
+            append(NEXT_LINE)
+            append("If only one of the two is set, then the other one will be computed")
+            append(" with respect to the original aspect ratio.")
+        }
     ) {
 
         val width by dimensionOption("width")
@@ -225,7 +232,7 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
 }
 
 private fun ProcessedArgument<String, String>.filesOnlyWithExpandedDirectoryContents()
-        : ProcessedArgument<List<File>, String> =
+    : ProcessedArgument<List<File>, String> =
     transformAll(nvalues = -1, required = true) { pathStrings ->
         pathStrings.flatMap { pathString ->
             val file = File(pathString)
@@ -253,7 +260,9 @@ private fun ProcessedArgument<List<File>, *>.validateSource(): ArgumentDelegate<
                 buildString {
                     append("The following ")
                     append(if (multipleOccurrences) "files were" else "file was")
-                    append(" not recognized as having the expected extension (.$FILE_EXTENSION_SVG):")
+                    append(" not recognized as having the expected extension (.")
+                    append(FILE_EXTENSION_SVG)
+                    append("):")
                     append(NEW_LINE)
                     append(
                         if (multipleOccurrences)

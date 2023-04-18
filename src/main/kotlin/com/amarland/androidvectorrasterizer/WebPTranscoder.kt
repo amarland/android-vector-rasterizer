@@ -87,11 +87,12 @@ class WebPTranscoder(
             } else image
 
             with(imageWriter) {
-                val densitySpecificOutputDirectory = rootOutputDirectory.resolve("drawable-$density")
-                    .also { directory ->
-                        if (!directory.exists() && !directory.mkdir())
-                            throw DirectoryCreationException(directory)
-                    }
+                val densitySpecificOutputDirectory =
+                    rootOutputDirectory.resolve("drawable-$density")
+                        .also { directory ->
+                            if (!directory.exists() && !directory.mkdir())
+                                throw DirectoryCreationException(directory)
+                        }
                 output = FileImageOutputStream(
                     densitySpecificOutputDirectory.resolve("$outputFileName.$FILE_EXTENSION_WEBP")
                 )
@@ -114,9 +115,9 @@ class WebPTranscoder(
             Density.LOW -> 0.75F
             Density.MEDIUM -> 1F
             Density.HIGH -> 1.5F
-            Density.EXTRA_HIGH -> 2F
-            Density.EXTRA_EXTRA_HIGH -> 3F
-            Density.EXTRA_EXTRA_EXTRA_HIGH -> 4F
+            Density.X_HIGH -> 2F
+            Density.XX_HIGH -> 3F
+            Density.XXX_HIGH -> 4F
         }
 
     data class Output(val directory: File, val fileName: String) : TranscoderOutput() {

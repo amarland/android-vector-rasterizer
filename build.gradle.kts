@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.7.10"
+    kotlin("jvm") version "1.8.20"
     application
 }
 
@@ -13,8 +13,8 @@ repositories {
 }
 
 dependencies {
-    implementation("org.apache.xmlgraphics:batik-transcoder:1.14")
-    implementation("com.github.ajalt.clikt:clikt:3.5.0")
+    implementation("org.apache.xmlgraphics:batik-transcoder:1.16")
+    implementation("com.github.ajalt.clikt:clikt:3.5.2")
     implementation("org.sejda.imageio:webp-imageio:0.1.6")
     testImplementation(kotlin("test"))
 }
