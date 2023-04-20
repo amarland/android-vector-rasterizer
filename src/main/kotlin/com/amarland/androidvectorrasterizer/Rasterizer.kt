@@ -31,22 +31,26 @@ import com.github.ajalt.clikt.parameters.groups.OptionGroup
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.float
-import org.apache.batik.anim.dom.SAXSVGDocumentFactory
+import com.github.ajalt.clikt.parameters.types.path
 import org.apache.batik.transcoder.TranscoderException
 import org.apache.batik.transcoder.TranscoderInput
-import org.apache.batik.util.XMLResourceDescriptor
-import org.w3c.dom.Document
-import java.io.File
-import java.io.IOException
-import java.io.InputStream
+import java.nio.file.Path
 import java.util.EnumSet
+import kotlin.io.path.Path
+import kotlin.io.path.absolute
+import kotlin.io.path.exists
+import kotlin.io.path.extension
+import kotlin.io.path.inputStream
+import kotlin.io.path.isDirectory
+import kotlin.io.path.isReadable
+import kotlin.io.path.nameWithoutExtension
+import kotlin.io.path.pathString
 import kotlin.system.exitProcess
 
 private const val FILE_EXTENSION_SVG = "svg"
 
-private val NEW_LINE = System.lineSeparator()
+private val newLine = System.lineSeparator()
 private const val NEXT_LINE = '\u0085'
 
 class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) {
@@ -60,11 +64,12 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
         "--destination",
         help = "Location of the generated WebP files$NEXT_LINE(must be a directory).",
         metavar = "<dir>"
-    ).file(canBeFile = false)
+    ).path(canBeFile = false)
 
     private val forceTransparentWhite by option(
         "--force-transparent-white",
-        help = "Convert transparent black (#00000000) pixels${NEXT_LINE}to white transparent pixels (#00FFFFFF).",
+        help = "Convert transparent black (#00000000) pixels${NEXT_LINE}" +
+            "to white transparent pixels (#00FFFFFF).",
         hidden = true
     ).flag()
 
@@ -87,12 +92,9 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
             } else {
                 for (sourceFile in source) transcode(sourceFile, densities)
             }
-        } catch (e: PreRasterizationException) {
-            System.err.println(e.localizedMessage)
-            exitProcess(2)
         } catch (e: TranscoderException) {
             System.err.println(e.exception?.localizedMessage ?: e.localizedMessage)
-            exitProcess(3)
+            exitProcess(2)
         }
     }
 
@@ -128,7 +130,8 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
                                 if (!isHelpOptionLine) appendLine()
                                 if (line == localization.optionsTitle()) optionsTitleIndex = index
                                 if (index == optionsTitleIndex ||
-                                    isPastOptionsTitle && line.isNotEmpty() && line.last() == '.' && !isHelpOptionLine
+                                    isPastOptionsTitle && line.isNotEmpty() && line.last() == '.' &&
+                                    !isHelpOptionLine
                                 ) {
                                     appendLine()
                                 }
@@ -155,25 +158,18 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
             }
         }
 
-    private fun transcode(sourceFile: File, densities: EnumSet<Density>) {
-        val svgDocument = createSvgDocument(sourceFile.inputStream())
-            ?: throw PreRasterizationException(
-                "'${sourceFile.path}' could not be interpreted as an SVG document."
-            )
-
-        val outputDirectory = destination?.also { directory ->
-            if (!directory.exists() && !directory.mkdirs())
-                throw DirectoryCreationException(directory)
-        } ?: sourceFile.parentFile
-
+    private fun transcode(sourcePath: Path, densities: EnumSet<Density>) {
         val (width, height) = dimensionOptions
-        WebPTranscoder(densities, width, height, forceTransparentWhite).transcode(
-            TranscoderInput(svgDocument),
-            WebPTranscoder.Output(
-                directory = outputDirectory,
-                fileName = sourceFile.nameWithoutExtension
-            )
-        )
+        sourcePath.inputStream().use { inputStream ->
+            WebPTranscoder(densities, width, height, forceTransparentWhite)
+                .transcode(
+                    TranscoderInput(inputStream),
+                    WebPTranscoder.Output(
+                        directory = destination ?: sourcePath.parent,
+                        fileName = sourcePath.nameWithoutExtension
+                    )
+                )
+        }
     }
 
     private class DensityOptions : OptionGroup(
@@ -232,26 +228,23 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
 }
 
 private fun ProcessedArgument<String, String>.filesOnlyWithExpandedDirectoryContents()
-    : ProcessedArgument<List<File>, String> =
+    : ProcessedArgument<List<Path>, String> =
     transformAll(nvalues = -1, required = true) { pathStrings ->
         pathStrings.flatMap { pathString ->
-            val file = File(pathString)
-            val files = if (file.isDirectory)
-                file.walk().filter { it.isFile }.asIterable()
-            else listOf(file)
+            val path = Path(pathString).absolute()
 
             with(context.localization) {
-                if (!file.exists())
-                    fail(pathDoesNotExist(pathTypeOther(), file.path))
-                if (!file.canRead())
-                    fail(pathIsNotReadable(pathTypeOther(), file.path))
+                if (!path.exists())
+                    fail(pathDoesNotExist(pathTypeOther(), path.pathString))
+                if (!path.isReadable())
+                    fail(pathIsNotReadable(pathTypeOther(), path.pathString))
             }
 
-            return@flatMap files
+            return@flatMap if (path.isDirectory()) path else listOf(path)
         }
     }
 
-private fun ProcessedArgument<List<File>, *>.validateSource(): ArgumentDelegate<List<File>> =
+private fun ProcessedArgument<List<Path>, *>.validateSource(): ArgumentDelegate<List<Path>> =
     validate { files ->
         val nonSvgFiles = files.filterNot { it.extension == FILE_EXTENSION_SVG }
         if (nonSvgFiles.isNotEmpty()) {
@@ -263,21 +256,13 @@ private fun ProcessedArgument<List<File>, *>.validateSource(): ArgumentDelegate<
                     append(" not recognized as having the expected extension (.")
                     append(FILE_EXTENSION_SVG)
                     append("):")
-                    append(NEW_LINE)
+                    append(newLine)
                     append(
                         if (multipleOccurrences)
-                            nonSvgFiles.joinToString(separator = NEW_LINE) { file -> file.path }
-                        else nonSvgFiles[0].path
+                            nonSvgFiles.joinToString(separator = newLine)
+                        else nonSvgFiles[0].pathString
                     )
                 }
             )
         }
-    }
-
-private fun createSvgDocument(inputStream: InputStream): Document? =
-    try {
-        SAXSVGDocumentFactory(XMLResourceDescriptor.getXMLParserClassName())
-            .createDocument(null, inputStream)
-    } catch (ioe: IOException) {
-        null
     }

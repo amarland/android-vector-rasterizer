@@ -21,12 +21,16 @@ import org.apache.batik.transcoder.TranscoderException
 import org.apache.batik.transcoder.TranscoderOutput
 import org.apache.batik.transcoder.image.ImageTranscoder
 import java.awt.image.BufferedImage
-import java.io.File
 import java.io.IOException
+import java.nio.file.Path
 import java.util.EnumSet
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.stream.FileImageOutputStream
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteRecursively
+import kotlin.io.path.isDirectory
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -60,6 +64,7 @@ class WebPTranscoder(
     override fun createImage(width: Int, height: Int) =
         BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
 
+    @OptIn(ExperimentalPathApi::class)
     @Suppress("InconsistentCommentForJavaParameter")
     override fun writeImage(image: BufferedImage, transcoderOutput: TranscoderOutput) {
         val (rootOutputDirectory, outputFileName) = transcoderOutput as? Output
@@ -89,12 +94,10 @@ class WebPTranscoder(
             with(imageWriter) {
                 val densitySpecificOutputDirectory =
                     rootOutputDirectory.resolve("drawable-$density")
-                        .also { directory ->
-                            if (!directory.exists() && !directory.mkdir())
-                                throw DirectoryCreationException(directory)
-                        }
+                        .also { directory -> directory.createDirectories() }
                 output = FileImageOutputStream(
                     densitySpecificOutputDirectory.resolve("$outputFileName.$FILE_EXTENSION_WEBP")
+                        .toFile() // TODO: make it work with Jimfs
                 )
                 try {
                     write(
@@ -120,10 +123,10 @@ class WebPTranscoder(
             Density.XXX_HIGH -> 4F
         }
 
-    data class Output(val directory: File, val fileName: String) : TranscoderOutput() {
+    data class Output(val directory: Path, val fileName: String) : TranscoderOutput() {
 
         init {
-            require(directory.isDirectory && fileName.isNotBlank())
+            require(directory.isDirectory() && fileName.isNotBlank())
         }
     }
 }
