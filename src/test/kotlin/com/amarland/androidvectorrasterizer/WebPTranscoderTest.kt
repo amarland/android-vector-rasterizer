@@ -10,26 +10,37 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.fail
 
+private const val SVG_RESOURCE_NAME = "queen_of_hearts.svg"
+
 class WebPTranscoderTest {
 
     private val classLoader = ClassLoaderUtils.getDefaultClassLoader()
 
     @Test
     fun `with original size and medium density`() {
-        val outputDirectory = Jimfs.newFileSystem().getPath("./original/").createDirectory()
-        val outputFileName = "medium.png"
+        val fileSystem = Jimfs.newFileSystem()
+        val outputDirectory = fileSystem.getPath("./original/").createDirectory()
+        val density = Density.MEDIUM
 
-        classLoader.getResourceAsStream("queen_of_hearts.svg")?.use { inputStream ->
-            WebPTranscoder(EnumSet.of(Density.MEDIUM))
+        classLoader.getResourceAsStream(SVG_RESOURCE_NAME)?.use { inputStream ->
+            WebPTranscoder(EnumSet.of(density))
                 .transcode(
                     TranscoderInput(inputStream),
-                    WebPTranscoder.Output(outputDirectory, outputFileName)
+                    WebPTranscoder.Output(
+                        outputDirectory,
+                        SVG_RESOURCE_NAME.substringBeforeLast('.')
+                    )
                 )
         } ?: fail("The source SVG file could not be loaded.")
 
-        val expectedBytes = classLoader.getResourceAsStream("queen_of_hearts_original.png")
+        val expectedBytes = classLoader.getResourceAsStream("queen_of_hearts_original.webp")
             .use { inputStream -> inputStream?.readBytes() }
-        val actualBytes = outputDirectory.resolve(outputFileName).readBytes()
+        val actualBytes = outputDirectory.resolve(
+            fileSystem.getPath(
+                density.directoryName,
+                SVG_RESOURCE_NAME.replaceAfterLast('.', "webp")
+            )
+        ).readBytes()
 
         assertContentEquals(expectedBytes, actualBytes)
     }

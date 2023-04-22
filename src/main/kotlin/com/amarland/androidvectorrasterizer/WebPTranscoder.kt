@@ -26,16 +26,16 @@ import java.nio.file.Path
 import java.util.EnumSet
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
-import javax.imageio.stream.FileImageOutputStream
+import javax.imageio.stream.MemoryCacheImageOutputStream
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.isDirectory
+import kotlin.io.path.outputStream
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private const val MIME_TYPE_WEBP = "image/webp"
-private const val FILE_EXTENSION_WEBP = "webp"
 
 class WebPTranscoder(
     private val densities: EnumSet<Density>,
@@ -65,7 +65,6 @@ class WebPTranscoder(
         BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
 
     @OptIn(ExperimentalPathApi::class)
-    @Suppress("InconsistentCommentForJavaParameter")
     override fun writeImage(image: BufferedImage, transcoderOutput: TranscoderOutput) {
         val (rootOutputDirectory, outputFileName) = transcoderOutput as? Output
             ?: throw IllegalArgumentException("`transcoderOutput` is of the wrong type.")
@@ -85,7 +84,7 @@ class WebPTranscoder(
 
                 BufferedImage(newWidth, newHeight, image.type).also { newImage ->
                     newImage.createGraphics().run {
-                        drawImage(image, 0, 0, newWidth, newHeight, /* imageObserver = */ null)
+                        drawImage(image, 0, 0, newWidth, newHeight, null)
                         dispose()
                     }
                 }
@@ -93,22 +92,26 @@ class WebPTranscoder(
 
             with(imageWriter) {
                 val densitySpecificOutputDirectory =
-                    rootOutputDirectory.resolve("drawable-$density")
+                    rootOutputDirectory.resolve(density.directoryName)
                         .also { directory -> directory.createDirectories() }
-                output = FileImageOutputStream(
-                    densitySpecificOutputDirectory.resolve("$outputFileName.$FILE_EXTENSION_WEBP")
-                        .toFile() // TODO: make it work with Jimfs
-                )
-                try {
-                    write(
-                        /* metadata = */ null,
-                        IIOImage(imageToWrite, /* thumbnails = */ null, /* metadata = */ null),
-                        WebPWriteParam(locale)
-                    )
-                } catch (ioe: IOException) {
-                    densitySpecificOutputDirectory.deleteRecursively()
-                    throw TranscoderException(ioe)
-                }
+                densitySpecificOutputDirectory
+                    .resolve("$outputFileName.webp")
+                    .outputStream()
+                    .use { outputStream ->
+                        MemoryCacheImageOutputStream(outputStream).use { imageOutputStream ->
+                            output = imageOutputStream
+                            try {
+                                write(
+                                    null,
+                                    IIOImage(imageToWrite, null, null),
+                                    WebPWriteParam(locale)
+                                )
+                            } catch (ioe: IOException) {
+                                densitySpecificOutputDirectory.deleteRecursively()
+                                throw TranscoderException(ioe)
+                            }
+                        }
+                    }
             }
         }
     }

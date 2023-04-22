@@ -25,5 +25,7 @@ enum class Density(private val qualifier: String) {
     XX_HIGH("xxhdpi"),
     XXX_HIGH("xxxhdpi");
 
+    val directoryName: String = "drawable-$qualifier"
+
     override fun toString() = qualifier
 }

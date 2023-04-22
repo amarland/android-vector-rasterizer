@@ -46,9 +46,8 @@ import kotlin.io.path.isDirectory
 import kotlin.io.path.isReadable
 import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.pathString
+import kotlin.io.path.useDirectoryEntries
 import kotlin.system.exitProcess
-
-private const val FILE_EXTENSION_SVG = "svg"
 
 private val newLine = System.lineSeparator()
 private const val NEXT_LINE = '\u0085'
@@ -230,7 +229,8 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
 private fun ProcessedArgument<String, String>.filesOnlyWithExpandedDirectoryContents()
     : ProcessedArgument<List<Path>, String> =
     transformAll(nvalues = -1, required = true) { pathStrings ->
-        pathStrings.flatMap { pathString ->
+        val paths = mutableListOf<Path>()
+        for (pathString in pathStrings) {
             val path = Path(pathString).absolute()
 
             with(context.localization) {
@@ -240,22 +240,25 @@ private fun ProcessedArgument<String, String>.filesOnlyWithExpandedDirectoryCont
                     fail(pathIsNotReadable(pathTypeOther(), path.pathString))
             }
 
-            return@flatMap if (path.isDirectory()) path else listOf(path)
+            if (path.isDirectory()) {
+                path.useDirectoryEntries("*.svg", paths::addAll)
+            } else {
+                paths.add(path)
+            }
         }
+        return@transformAll paths
     }
 
 private fun ProcessedArgument<List<Path>, *>.validateSource(): ArgumentDelegate<List<Path>> =
     validate { files ->
-        val nonSvgFiles = files.filterNot { it.extension == FILE_EXTENSION_SVG }
+        val nonSvgFiles = files.filterNot { it.extension == "svg" }
         if (nonSvgFiles.isNotEmpty()) {
             val multipleOccurrences = nonSvgFiles.size > 1
             fail(
                 buildString {
                     append("The following ")
                     append(if (multipleOccurrences) "files were" else "file was")
-                    append(" not recognized as having the expected extension (.")
-                    append(FILE_EXTENSION_SVG)
-                    append("):")
+                    append(" not recognized as having the expected extension (.svg):")
                     append(newLine)
                     append(
                         if (multipleOccurrences)
