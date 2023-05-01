@@ -14,8 +14,11 @@ dependencies {
     implementation("org.apache.xmlgraphics:batik-transcoder:1.16")
     implementation("com.github.ajalt.clikt:clikt:3.5.2")
     implementation("org.sejda.imageio:webp-imageio:0.1.6")
+
+    testImplementation(platform("org.junit:junit-bom:5.9.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
     testImplementation("com.google.jimfs:jimfs:1.2")
-    testImplementation(kotlin("test"))
 }
 
 tasks.test {

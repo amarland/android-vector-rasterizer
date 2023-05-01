@@ -47,6 +47,8 @@ class WebPTranscoder(
     private val initialScaleFactor: Float
 
     init {
+        require(densities.isNotEmpty())
+
         initialScaleFactor = getScaleFactorForDensity(densities.last())
 
         if (widthDp != null) hints[KEY_WIDTH] = widthDp
