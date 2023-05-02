@@ -16,14 +16,14 @@
 
 package com.amarland.androidvectorrasterizer
 
-enum class Density(private val qualifier: String) {
+enum class Density(private val qualifier: String, val scaleFactor: Float) {
 
-    LOW("ldpi"),
-    MEDIUM("mdpi"),
-    HIGH("hdpi"),
-    X_HIGH("xhdpi"),
-    XX_HIGH("xxhdpi"),
-    XXX_HIGH("xxxhdpi");
+    LOW("ldpi", 0.75F),
+    MEDIUM("mdpi", 1F),
+    HIGH("hdpi", 1.5F),
+    X_HIGH("xhdpi", 2F),
+    XX_HIGH("xxhdpi", 3F),
+    XXX_HIGH("xxxhdpi", 4F);
 
     val directoryName: String = "drawable-$qualifier"
 

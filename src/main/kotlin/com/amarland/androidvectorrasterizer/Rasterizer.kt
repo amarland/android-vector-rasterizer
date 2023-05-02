@@ -177,18 +177,17 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
             " by specifying one or more of the options below."
     ) {
 
-        val ldpi by densityOption(Density.LOW, "ldpi", defaultValue = false)
-        val mdpi by densityOption(Density.MEDIUM, "mdpi", defaultValue = true)
-        val hdpi by densityOption(Density.HIGH, "hdpi", defaultValue = true)
-        val xhdpi by densityOption(Density.X_HIGH, "xhdpi", defaultValue = true)
-        val xxhdpi by densityOption(Density.XX_HIGH, "xxhdpi", defaultValue = true)
-        val xxxhdpi by densityOption(Density.XXX_HIGH, "xxxhdpi", defaultValue = true)
+        val ldpi by densityOption(Density.LOW, defaultValue = false)
+        val mdpi by densityOption(Density.MEDIUM, defaultValue = true)
+        val hdpi by densityOption(Density.HIGH, defaultValue = true)
+        val xhdpi by densityOption(Density.X_HIGH, defaultValue = true)
+        val xxhdpi by densityOption(Density.XX_HIGH, defaultValue = true)
+        val xxxhdpi by densityOption(Density.XXX_HIGH, defaultValue = true)
 
         private fun densityOption(
             density: Density,
-            help: String,
             defaultValue: Boolean
-        ) = option("--$density", help = help)
+        ) = option("--$density", help = density.toString())
             .flag(
                 "--no-$density",
                 default = defaultValue,

@@ -35,8 +35,6 @@ import kotlin.io.path.outputStream
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private const val MIME_TYPE_WEBP = "image/webp"
-
 class WebPTranscoder(
     private val densities: EnumSet<Density>,
     widthDp: Float? = null,
@@ -49,7 +47,7 @@ class WebPTranscoder(
     init {
         require(densities.isNotEmpty())
 
-        initialScaleFactor = getScaleFactorForDensity(densities.last())
+        initialScaleFactor = densities.last().scaleFactor
 
         if (widthDp != null) hints[KEY_WIDTH] = widthDp
         if (heightDp != null) hints[KEY_HEIGHT] = heightDp
@@ -71,16 +69,12 @@ class WebPTranscoder(
         val (rootOutputDirectory, outputFileName) = transcoderOutput as? Output
             ?: throw IllegalArgumentException("`transcoderOutput` is of the wrong type.")
 
-        val imageWriter = ImageIO.getImageWritersByMIMEType(MIME_TYPE_WEBP)
-            .takeIf { it.hasNext() }
-            ?.next()
-            ?: throw TranscoderException("No writer found for `$MIME_TYPE_WEBP`")
+        val imageWriter = ImageIO.getImageWritersBySuffix("webp")
+            .firstOrThrow { TranscoderException("Could not find a writer for WebP.") }
 
         for (density in densities) {
-            val densityScaleFactor = getScaleFactorForDensity(density)
-
-            val imageToWrite = if (abs(initialScaleFactor - densityScaleFactor) > 0.05F) {
-                val actualScaleFactor = 1F / (initialScaleFactor / densityScaleFactor)
+            val imageToWrite = if (abs(initialScaleFactor - density.scaleFactor) > 0.05F) {
+                val actualScaleFactor = 1F / (initialScaleFactor / density.scaleFactor)
                 val newWidth = (image.width * actualScaleFactor).roundToInt()
                 val newHeight = (image.height * actualScaleFactor).roundToInt()
 
@@ -117,16 +111,6 @@ class WebPTranscoder(
             }
         }
     }
-
-    private fun getScaleFactorForDensity(density: Density): Float =
-        when (density) {
-            Density.LOW -> 0.75F
-            Density.MEDIUM -> 1F
-            Density.HIGH -> 1.5F
-            Density.X_HIGH -> 2F
-            Density.XX_HIGH -> 3F
-            Density.XXX_HIGH -> 4F
-        }
 
     data class Output(val directory: Path, val fileName: String) : TranscoderOutput() {
 
