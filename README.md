@@ -14,12 +14,12 @@ Density options:
   You can enable or disable generation of a version for a specific pixel
   density by specifying one or more of the options below.
 
-  --ldpi / --no-ldpi          low (default: disabled)
-  --mdpi / --no-mdpi          medium (default: enabled)
-  --hdpi / --no-hdpi          high (default: enabled)
-  --xhdpi / --no-xhdpi        extra-high (default: enabled)
-  --xxhdpi / --no-xxhdpi      extra-extra-high (default: enabled)
-  --xxxhdpi / --no-xxxhdpi    extra-extra-extra-high (default: enabled)
+  --ldpi / --no-ldpi          (default: not generated)
+  --mdpi / --no-mdpi          (default: generated)
+  --hdpi / --no-hdpi          (default: generated)
+  --xhdpi / --no-xhdpi        (default: generated)
+  --xxhdpi / --no-xxhdpi      (default: generated)
+  --xxxhdpi / --no-xxxhdpi    (default: generated)
 
 Dimension options:
 

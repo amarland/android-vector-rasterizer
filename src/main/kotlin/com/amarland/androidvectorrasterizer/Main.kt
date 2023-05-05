@@ -18,4 +18,4 @@
 
 package com.amarland.androidvectorrasterizer
 
-fun main(args: Array<String>) = Rasterizer().main(args)
+fun main(args: Array<String>) = RasterizeCommand().main(args)

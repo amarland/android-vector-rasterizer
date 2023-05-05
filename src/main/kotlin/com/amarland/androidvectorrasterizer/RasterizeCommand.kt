@@ -52,7 +52,7 @@ import kotlin.system.exitProcess
 private val newLine = System.lineSeparator()
 private const val NEXT_LINE = '\u0085'
 
-class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) {
+class RasterizeCommand : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) {
 
     private val source by argument("<source>")
         .filesOnlyWithExpandedDirectoryContents()
@@ -187,11 +187,11 @@ class Rasterizer : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true)
         private fun densityOption(
             density: Density,
             defaultValue: Boolean
-        ) = option("--$density", help = density.toString())
+        ) = option("--$density")
             .flag(
                 "--no-$density",
                 default = defaultValue,
-                defaultForHelp = if (defaultValue) "enabled" else "disabled"
+                defaultForHelp = if (defaultValue) "generated" else "not generated"
             )
     }
 

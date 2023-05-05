@@ -16,7 +16,7 @@
 
 package com.amarland.androidvectorrasterizer
 
-enum class Density(private val qualifier: String, val scaleFactor: Float) {
+enum class Density(val qualifier: String, val scaleFactor: Float) {
 
     LOW("ldpi", 0.75F),
     MEDIUM("mdpi", 1F),
