@@ -35,9 +35,11 @@ import com.github.ajalt.clikt.parameters.types.float
 import com.github.ajalt.clikt.parameters.types.path
 import org.apache.batik.transcoder.TranscoderException
 import org.apache.batik.transcoder.TranscoderInput
+import org.jetbrains.annotations.VisibleForTesting
+import java.nio.file.FileSystem
+import java.nio.file.FileSystems
 import java.nio.file.Path
 import java.util.EnumSet
-import kotlin.io.path.Path
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
 import kotlin.io.path.extension
@@ -52,9 +54,12 @@ import kotlin.system.exitProcess
 private val newLine = System.lineSeparator()
 private const val NEXT_LINE = '\u0085'
 
-class RasterizeCommand : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) {
+class RasterizeCommand(
+    private val fileSystem: FileSystem = FileSystems.getDefault()
+) : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) {
 
-    private val source by argument("<source>")
+    @get:VisibleForTesting
+    val source by argument("<source>")
         .filesOnlyWithExpandedDirectoryContents()
         .validateSource()
 
@@ -63,7 +68,7 @@ class RasterizeCommand : CliktCommand(name = "rasterize", printHelpOnEmptyArgs =
         "--destination",
         help = "Location of the generated WebP files$NEXT_LINE(must be a directory).",
         metavar = "<dir>"
-    ).path(canBeFile = false)
+    ).path(canBeFile = false, fileSystem = fileSystem)
 
     private val forceTransparentWhite by option(
         "--force-transparent-white",
@@ -76,6 +81,8 @@ class RasterizeCommand : CliktCommand(name = "rasterize", printHelpOnEmptyArgs =
 
     private val dimensionOptions by DimensionOptions()
 
+    private val dryRun by option("--dry-run", hidden = true).flag()
+
     init {
         configureHelpFormatter()
     }
@@ -84,6 +91,8 @@ class RasterizeCommand : CliktCommand(name = "rasterize", printHelpOnEmptyArgs =
         val densities = readDensityFlags().also {
             if (it.isEmpty()) throw UsageError("At least one density must be specified.")
         }
+
+        if (dryRun) return
 
         try {
             if (source.size == 1) {
@@ -223,48 +232,48 @@ class RasterizeCommand : CliktCommand(name = "rasterize", printHelpOnEmptyArgs =
                 metavar = "<float>"
             ).float()
     }
-}
 
-private fun ProcessedArgument<String, String>.filesOnlyWithExpandedDirectoryContents()
-    : ProcessedArgument<List<Path>, String> =
-    transformAll(nvalues = -1, required = true) { pathStrings ->
-        val paths = mutableListOf<Path>()
-        for (pathString in pathStrings) {
-            val path = Path(pathString).absolute()
+    private fun ProcessedArgument<String, String>.filesOnlyWithExpandedDirectoryContents()
+        : ProcessedArgument<List<Path>, String> =
+        transformAll(nvalues = -1, required = true) { pathStrings ->
+            buildList {
+                for (pathString in pathStrings) {
+                    val path = fileSystem.getPath(pathString).absolute()
 
-            with(context.localization) {
-                if (!path.exists())
-                    fail(pathDoesNotExist(pathTypeOther(), path.pathString))
-                if (!path.isReadable())
-                    fail(pathIsNotReadable(pathTypeOther(), path.pathString))
-            }
+                    with(context.localization) {
+                        if (!path.exists())
+                            fail(pathDoesNotExist(pathTypeOther(), path.pathString))
+                        if (!path.isReadable())
+                            fail(pathIsNotReadable(pathTypeOther(), path.pathString))
+                    }
 
-            if (path.isDirectory()) {
-                path.useDirectoryEntries("*.svg", paths::addAll)
-            } else {
-                paths.add(path)
-            }
-        }
-        return@transformAll paths
-    }
-
-private fun ProcessedArgument<List<Path>, *>.validateSource(): ArgumentDelegate<List<Path>> =
-    validate { files ->
-        val nonSvgFiles = files.filterNot { it.extension == "svg" }
-        if (nonSvgFiles.isNotEmpty()) {
-            val multipleOccurrences = nonSvgFiles.size > 1
-            fail(
-                buildString {
-                    append("The following ")
-                    append(if (multipleOccurrences) "files were" else "file was")
-                    append(" not recognized as having the expected extension (.svg):")
-                    append(newLine)
-                    append(
-                        if (multipleOccurrences)
-                            nonSvgFiles.joinToString(separator = newLine)
-                        else nonSvgFiles[0].pathString
-                    )
+                    if (path.isDirectory()) {
+                        path.useDirectoryEntries("*.svg", this::addAll)
+                    } else {
+                        add(path)
+                    }
                 }
-            )
+            }
         }
-    }
+
+    private fun ProcessedArgument<List<Path>, *>.validateSource(): ArgumentDelegate<List<Path>> =
+        validate { files ->
+            val nonSvgFiles = files.filterNot { it.extension == "svg" }
+            if (nonSvgFiles.isNotEmpty()) {
+                val multipleOccurrences = nonSvgFiles.size > 1
+                fail(
+                    buildString {
+                        append("The following ")
+                        append(if (multipleOccurrences) "files were" else "file was")
+                        append(" not recognized as having the expected extension (.svg):")
+                        append(newLine)
+                        append(
+                            if (multipleOccurrences)
+                                nonSvgFiles.joinToString(separator = newLine)
+                            else nonSvgFiles[0].pathString
+                        )
+                    }
+                )
+            }
+        }
+}
