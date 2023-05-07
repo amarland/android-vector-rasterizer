@@ -95,10 +95,8 @@ class RasterizeCommand(
         if (dryRun) return
 
         try {
-            if (source.size == 1) {
-                transcode(source[0], densities)
-            } else {
-                for (sourceFile in source) transcode(sourceFile, densities)
+            for (sourceFile in source) {
+                transcode(sourceFile, densities)
             }
         } catch (e: TranscoderException) {
             System.err.println(e.exception?.localizedMessage ?: e.localizedMessage)
@@ -234,9 +232,9 @@ class RasterizeCommand(
     }
 
     private fun ProcessedArgument<String, String>.filesOnlyWithExpandedDirectoryContents()
-        : ProcessedArgument<List<Path>, String> =
+        : ProcessedArgument<Collection<Path>, String> =
         transformAll(nvalues = -1, required = true) { pathStrings ->
-            buildList {
+            hashSetOf<Path>().apply {
                 for (pathString in pathStrings) {
                     val path = fileSystem.getPath(pathString).absolute()
 
@@ -256,7 +254,8 @@ class RasterizeCommand(
             }
         }
 
-    private fun ProcessedArgument<List<Path>, *>.validateSource(): ArgumentDelegate<List<Path>> =
+    private fun ProcessedArgument<Collection<Path>, *>.validateSource()
+        : ArgumentDelegate<Collection<Path>> =
         validate { files ->
             val nonSvgFiles = files.filterNot { it.extension == "svg" }
             if (nonSvgFiles.isNotEmpty()) {

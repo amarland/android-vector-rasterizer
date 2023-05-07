@@ -3,6 +3,7 @@ package com.amarland.androidvectorrasterizer
 import com.github.ajalt.clikt.core.UsageError
 import com.google.common.jimfs.Jimfs
 import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -42,19 +43,29 @@ class RasterizeCommandTest {
 
     @Test
     fun `directories passed as source are 'transformed' into a list of the SVG files they contain`() {
-        RasterizeCommand(fileSystem).run {
-            parse(listOf(sourceDirectory.pathString, "--dry-run"))
-
+        with(createCommandAndParseArguments(listOf(sourceDirectory.pathString))) {
             assertTrue(
-                source.all { file -> file.absolutePathString() in sourceFilesWithValidExtension }
+                (sourceFilesWithValidExtension -
+                    source.mapTo(hashSetOf(), Path::absolutePathString)).isEmpty()
             )
+        }
+    }
+
+    @Test
+    fun `duplicate source files are eliminated`() {
+        val arguments = sourceFilesWithValidExtension + sourceDirectory.pathString
+        with(createCommandAndParseArguments(arguments)) {
+            assertEquals(sourceFilesWithValidExtension.size, source.size)
         }
     }
 
     private fun assertThrowsUsageError(arguments: List<String>) =
         assertThrows<UsageError> {
-            RasterizeCommand().parse(arguments + "--dry-run")
+            createCommandAndParseArguments(arguments)
         }
+
+    private fun createCommandAndParseArguments(arguments: List<String>): RasterizeCommand =
+        RasterizeCommand(fileSystem).also { command -> command.parse(arguments + "--dry-run") }
 
     private companion object {
 
