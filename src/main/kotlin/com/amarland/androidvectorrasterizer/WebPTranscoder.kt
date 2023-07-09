@@ -20,6 +20,7 @@ import com.luciad.imageio.webp.WebPWriteParam
 import org.apache.batik.transcoder.TranscoderException
 import org.apache.batik.transcoder.TranscoderOutput
 import org.apache.batik.transcoder.image.ImageTranscoder
+import java.awt.Image
 import java.awt.image.BufferedImage
 import java.io.IOException
 import java.nio.file.Path
@@ -78,9 +79,14 @@ class WebPTranscoder(
                 val newWidth = (image.width * actualScaleFactor).roundToInt()
                 val newHeight = (image.height * actualScaleFactor).roundToInt()
 
-                BufferedImage(newWidth, newHeight, image.type).also { newImage ->
-                    newImage.createGraphics().run {
-                        drawImage(image, 0, 0, newWidth, newHeight, null)
+                BufferedImage(newWidth, newHeight, image.type).apply {
+                    createGraphics().run {
+                        val scaledImage = image.getScaledInstance(
+                            newWidth,
+                            newHeight,
+                            Image.SCALE_SMOOTH
+                        )
+                        drawImage(scaledImage, 0, 0, null)
                         dispose()
                     }
                 }
