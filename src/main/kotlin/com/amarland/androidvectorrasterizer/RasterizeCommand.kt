@@ -19,9 +19,8 @@ package com.amarland.androidvectorrasterizer
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.context
-import com.github.ajalt.clikt.output.CliktHelpFormatter
-import com.github.ajalt.clikt.output.HelpFormatter
 import com.github.ajalt.clikt.output.Localization
+import com.github.ajalt.clikt.output.MordantHelpFormatter
 import com.github.ajalt.clikt.parameters.arguments.ArgumentDelegate
 import com.github.ajalt.clikt.parameters.arguments.ProcessedArgument
 import com.github.ajalt.clikt.parameters.arguments.argument
@@ -59,7 +58,7 @@ class RasterizeCommand(
 ) : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) {
 
     @get:VisibleForTesting
-    val source by argument("<source>")
+    val source by argument("source")
         .filesOnlyWithExpandedDirectoryContents()
         .validateSource()
 
@@ -106,48 +105,12 @@ class RasterizeCommand(
 
     private fun configureHelpFormatter() {
         context {
-            helpFormatter = object : CliktHelpFormatter(
-                localization = object : Localization {
-
-                    override fun optionsMetavar() = super.optionsMetavar().lowercase()
-                },
-                colSpacing = 4,
-                showDefaultValues = true
-            ) {
-
-                override fun formatHelp(
-                    prolog: String,
-                    epilog: String,
-                    parameters: List<HelpFormatter.ParameterHelp>,
-                    programName: String
-                ) = super.formatHelp(prolog, epilog, parameters, programName)
-                    .lineSequence()
-                    .withIndex().let { linesWithIndex ->
-                        buildString {
-                            var optionsTitleIndex = Int.MAX_VALUE
-
-                            for ((index, line) in linesWithIndex) {
-                                val isPastOptionsTitle = index > optionsTitleIndex
-                                val isHelpOptionLine = isPastOptionsTitle &&
-                                    currentContext.helpOptionNames.last() in line
-
-                                append(line)
-
-                                if (!isHelpOptionLine) appendLine()
-                                if (line == localization.optionsTitle()) optionsTitleIndex = index
-                                if (index == optionsTitleIndex ||
-                                    isPastOptionsTitle && line.isNotEmpty() && line.last() == '.' &&
-                                    !isHelpOptionLine
-                                ) {
-                                    appendLine()
-                                }
-                            }
-                        }
-                    }
-            }
             localization = object : Localization {
 
                 override fun helpOptionMessage() = "${super.helpOptionMessage()}."
+            }
+            helpFormatter = { context ->
+                MordantHelpFormatter(context, showDefaultValues = true)
             }
         }
     }

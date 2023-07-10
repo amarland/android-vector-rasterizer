@@ -33,7 +33,6 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.isDirectory
 import kotlin.io.path.outputStream
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class WebPTranscoder(
@@ -43,12 +42,12 @@ class WebPTranscoder(
     forceTransparentWhite: Boolean = false
 ) : ImageTranscoder() {
 
-    private val initialScaleFactor: Float
+    private val initialDensity: Density
 
     init {
         require(densities.isNotEmpty())
 
-        initialScaleFactor = densities.last().scaleFactor
+        initialDensity = densities.last()
 
         if (widthDp != null) hints[KEY_WIDTH] = widthDp
         if (heightDp != null) hints[KEY_HEIGHT] = heightDp
@@ -58,8 +57,8 @@ class WebPTranscoder(
 
     override fun setImageSize(docWidth: Float, docHeight: Float) {
         super.setImageSize(docWidth, docHeight)
-        width *= initialScaleFactor
-        height *= initialScaleFactor
+        width *= initialDensity.scaleFactor
+        height *= initialDensity.scaleFactor
     }
 
     override fun createImage(width: Int, height: Int) =
@@ -74,8 +73,8 @@ class WebPTranscoder(
             .firstOrThrow { TranscoderException("Could not find a writer for WebP.") }
 
         for (density in densities) {
-            val imageToWrite = if (abs(initialScaleFactor - density.scaleFactor) > 0.05F) {
-                val actualScaleFactor = 1F / (initialScaleFactor / density.scaleFactor)
+            val imageToWrite = if (initialDensity != density) {
+                val actualScaleFactor = 1F / (initialDensity.scaleFactor / density.scaleFactor)
                 val newWidth = (image.width * actualScaleFactor).roundToInt()
                 val newHeight = (image.height * actualScaleFactor).roundToInt()
 

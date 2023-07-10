@@ -28,12 +28,12 @@ class WebPTranscoderTest {
             desiredWidth != null -> desiredWidth
             desiredHeight != null -> desiredHeight * (SOURCE_WIDTH / SOURCE_HEIGHT)
             else -> SOURCE_WIDTH
-        }
+        }.roundToInt()
         val expectedHeight = when {
             desiredHeight != null -> desiredHeight
             desiredWidth != null -> desiredWidth * (SOURCE_HEIGHT / SOURCE_WIDTH)
             else -> SOURCE_HEIGHT
-        }
+        }.roundToInt()
 
         Jimfs.newFileSystem().use { fileSystem ->
             val outputDirectory = fileSystem.getPath("./${expectedWidth}x$expectedHeight/")
