@@ -37,4 +37,6 @@ Dimension options:
 Options:
   -d, --destination=<dir>  Location of the generated WebP files
                            (must be a directory).
+  --force-transparent-white  Convert transparent black (#00000000) pixels
+                             to white transparent pixels (#00FFFFFF).
 ```

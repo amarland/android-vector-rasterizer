@@ -72,8 +72,7 @@ class RasterizeCommand(
     private val forceTransparentWhite by option(
         "--force-transparent-white",
         help = "Convert transparent black (#00000000) pixels${NEXT_LINE}" +
-            "to white transparent pixels (#00FFFFFF).",
-        hidden = true
+            "to white transparent pixels (#00FFFFFF)."
     ).flag()
 
     private val densityOptions by DensityOptions()
@@ -105,12 +104,14 @@ class RasterizeCommand(
 
     private fun configureHelpFormatter() {
         context {
-            localization = object : Localization {
-
-                override fun helpOptionMessage() = "${super.helpOptionMessage()}."
-            }
             helpFormatter = { context ->
                 MordantHelpFormatter(context, showDefaultValues = true)
+            }
+            localization = object : Localization {
+
+                override fun helpOptionMessage() = super.helpOptionMessage().let { message ->
+                    if (message.last() == '.') message else "$message."
+                }
             }
         }
     }
