@@ -1,4 +1,4 @@
-# android-vector-rasterizer
+# android-vector-rasterizer ![Build](https://github.com/amarland/android-vector-rasterizer/actions/workflows/gradle-ci.yml/badge.svg)
 
 A JVM command-line tool to generate WebP images from SVG files for the multiple Android pixel densities.
 
