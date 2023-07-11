@@ -1,13 +1,15 @@
 # android-vector-rasterizer ![Build](https://github.com/amarland/android-vector-rasterizer/actions/workflows/gradle-ci.yml/badge.svg)
 
-A JVM command-line tool to generate WebP images from SVG files for the multiple Android pixel densities.
+A command-line tool to generate WebP images from SVG files for the multiple Android pixel densities.
+
+**Java 11 or later is required to run this tool.**
 
 ## Usage
 
 Usage information can be obtained by passing the `--help / -h` option:
 
 ```
-rasterize [<options>] <source>...
+java -jar android-vector-rasterizer.jar [<options>] <source>...
 
 Density options:
 
@@ -31,12 +33,23 @@ Dimension options:
   If only one of the two is set, then the other one will be computed with
   respect to the original aspect ratio.
 
-  --width=<float>   Width in dp.
-  --height=<float>  Height in dp.
+  --width=<int>   Width in dp.
+  --height=<int>  Height in dp.
 
 Options:
   -d, --destination=<dir>  Location of the generated WebP files
                            (must be a directory).
   --force-transparent-white  Convert transparent black (#00000000) pixels
-                             to white transparent pixels (#00FFFFFF).
+                             to transparent white pixels (#00FFFFFF).
 ```
+
+### Examples:
+
+- Rasterize `vector.svg` and generate WebP versions for all densities (all but `ldpi` are implied if not explicitly unset):\
+  ```java -jar android-vector-rasterizer.jar --ldpi vector.svg```
+
+- Set a target width of 256 density-independent pixels (while preserving the aspect ratio):\
+  ```java -jar android-vector-rasterizer.jar --width=256 vector.svg```
+
+- Specify the location of the generated files:\
+  ```java -jar android-vector-rasterizer.jar -d generated/ vector1.svg vector2.svg vector3.svg```

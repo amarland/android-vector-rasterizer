@@ -28,10 +28,11 @@ import com.github.ajalt.clikt.parameters.arguments.transformAll
 import com.github.ajalt.clikt.parameters.arguments.validate
 import com.github.ajalt.clikt.parameters.groups.OptionGroup
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
+import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.types.float
 import com.github.ajalt.clikt.parameters.types.path
+import com.github.ajalt.clikt.parameters.types.uint
 import org.apache.batik.transcoder.TranscoderException
 import org.apache.batik.transcoder.TranscoderInput
 import org.jetbrains.annotations.VisibleForTesting
@@ -55,7 +56,10 @@ private const val NEXT_LINE = '\u0085'
 
 class RasterizeCommand(
     private val fileSystem: FileSystem = FileSystems.getDefault()
-) : CliktCommand(name = "rasterize", printHelpOnEmptyArgs = true) {
+) : CliktCommand(
+    name = "java -jar android-vector-rasterizer.jar",
+    printHelpOnEmptyArgs = true
+) {
 
     @get:VisibleForTesting
     val source by argument("source")
@@ -72,7 +76,7 @@ class RasterizeCommand(
     private val forceTransparentWhite by option(
         "--force-transparent-white",
         help = "Convert transparent black (#00000000) pixels${NEXT_LINE}" +
-            "to white transparent pixels (#00FFFFFF)."
+            "to transparent white pixels (#00FFFFFF)."
     ).flag()
 
     private val densityOptions by DensityOptions()
@@ -191,8 +195,8 @@ class RasterizeCommand(
             option(
                 "--$name",
                 help = "${name.replaceFirstChar(Char::titlecase)} in dp.",
-                metavar = "<float>"
-            ).float()
+                metavar = "<int>"
+            ).uint().convert { it.toFloat() }
     }
 
     private fun ProcessedArgument<String, String>.filesOnlyWithExpandedDirectoryContents()
