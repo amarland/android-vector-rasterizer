@@ -45,7 +45,7 @@ Options:
 
 ### Examples:
 
-- Rasterize `vector.svg` and generate WebP versions for all densities (all but `ldpi` are implied if not explicitly unset):\
+- Rasterize `vector.svg` and generate WebP versions for all densities (all except `ldpi` are implied if not explicitly unset):\
   ```java -jar android-vector-rasterizer.jar --ldpi vector.svg```
 
 - Set a target width of 256 density-independent pixels (while preserving the aspect ratio):\
